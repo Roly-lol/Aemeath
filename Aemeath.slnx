@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="aemeath/aemeath.vcxproj" Id="b71e878a-b87b-4fc6-8b5c-9b9239fae1e5" />
+</Solution>
