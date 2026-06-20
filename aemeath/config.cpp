@@ -41,7 +41,7 @@ AppConfig Config::Load()
         cfg.transparencyIndex = 0;
 #ifdef _DEBUG
         std::stringstream ss;
-        ss << "\n[Config::Save] Saving config:\n"
+        ss << "\n[Config::Load] Loaded config:\n"
             << "  window_x          = " << cfg.windowX << "\n"
             << "  window_y          = " << cfg.windowY << "\n"
             << "  scale_index        = " << cfg.scaleIndex << "\n"
@@ -69,7 +69,7 @@ void Config::Save(const AppConfig& cfg)
     std::wstring path = GetConfigPath();
 #ifdef _DEBUG
         std::stringstream ss;
-        ss << "\n[Config::Load] Loaded config:\n"
+        ss << "\n[Config::Save] Saving config:\n"
             << "  window_x          = " << cfg.windowX << "\n"
             << "  window_y          = " << cfg.windowY << "\n"
             << "  scale_index        = " << cfg.scaleIndex << "\n"
