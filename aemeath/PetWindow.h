@@ -67,4 +67,7 @@ private:
 
     // 托盘
     TrayIcon tray;
+
+    // 原子锁
+    HANDLE hMutex;
 };

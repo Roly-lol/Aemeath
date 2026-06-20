@@ -165,6 +165,7 @@ LRESULT PetWindow::HandleMessage(UINT msg, WPARAM w, LPARAM l)
         KillTimer(Hwnd, 2);
         DestroyAllGifs();
         Gdiplus::GdiplusShutdown(gdiplusToken);
+        CloseHandle(hMutex);
         PostQuitMessage(0);
         return 0;
     }
@@ -425,7 +426,7 @@ void PetWindow::SetAutoStartup(bool enable)
 {
     HKEY key;
     RegOpenKeyW(HKEY_CURRENT_USER,
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+        LR"(Software\Microsoft\Windows\CurrentVersion\Run)",
         &key);
 
     if (enable)
@@ -456,7 +457,7 @@ void PetWindow::SaveLocation()
 //设置原子锁
 void PetWindow::CheckSingleInstance()
 {
-    HANDLE hMutex = CreateMutex(NULL, FALSE, L"aemeath");
+    hMutex = CreateMutex(NULL, FALSE, L"aemeath");
     if (GetLastError() == ERROR_ALREADY_EXISTS)
     {
         MessageBox(NULL, L"程序已经在运行中！", L"提示", MB_ICONINFORMATION);
