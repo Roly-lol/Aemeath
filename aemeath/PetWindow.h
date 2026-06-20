@@ -34,7 +34,8 @@ private:
     void SetTransparency(int index);
     void TogglePause();
     void SetAutoStartup(bool enable);
-
+    // 原子锁
+    void CheckSingleInstance();
 private:
     // 基础
     HINSTANCE hInst;

@@ -11,6 +11,8 @@ int g_transparencyIndex = 0;
 // 初始化 GDI+、加载配置、注册窗口类、创建窗口和加载 GIF
 PetWindow::PetWindow(HINSTANCE hInst) : hInst(hInst), tray()
 {
+    //设置原子锁
+    PetWindow::CheckSingleInstance();
     // GDI+
     Gdiplus::GdiplusStartupInput gsi;
     GdiplusStartup(&gdiplusToken, &gsi, nullptr);
@@ -434,4 +436,15 @@ void PetWindow::SaveLocation()
     cfg.windowX = rc.left;
     cfg.windowY = rc.top;
     Config::Save(cfg);
+}
+//设置原子锁
+void PetWindow::CheckSingleInstance()
+{
+    HANDLE hMutex = CreateMutex(NULL, FALSE, L"aemeath");
+    if (GetLastError() == ERROR_ALREADY_EXISTS)
+    {
+        MessageBox(NULL, L"程序已经在运行中！", L"提示", MB_ICONINFORMATION);
+        CloseHandle(hMutex);
+        exit(0);
+    }
 }
