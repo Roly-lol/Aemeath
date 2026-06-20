@@ -36,6 +36,8 @@ private:
     void SetAutoStartup(bool enable);
     // 原子锁
     void CheckSingleInstance();
+    //释放所有 GDI+ 对象
+    void DestroyAllGifs();
 private:
     // 基础
     HINSTANCE hInst;

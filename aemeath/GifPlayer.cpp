@@ -17,6 +17,7 @@ void GifPlayer::ClearFrames()
 {
     for (auto* f : frames) delete f;
     frames.clear();
+    if (flipped) flipped->ClearFrames();
 }
 /// <summary>
 /// 加载并解码指定路径的 GIF 文件，将每一帧按给定缩放因子绘制为位图并存入对象的 frames 列表。函数在开始时会清除已有帧，并设置 width 和 height 成员。
