@@ -11,6 +11,8 @@ int g_transparencyIndex = 0;
 // 初始化 GDI+、加载配置、注册窗口类、创建窗口和加载 GIF
 PetWindow::PetWindow(HINSTANCE hInst) : hInst(hInst), tray()
 {
+    //设置原子锁
+    PetWindow::CheckSingleInstance();
     // GDI+
     Gdiplus::GdiplusStartupInput gsi;
     GdiplusStartup(&gdiplusToken, &gsi, nullptr);
@@ -76,6 +78,14 @@ void PetWindow::LoadGif(GifPlayer& gif, int id, double scale)
 {
     gif.LoadFromResource(hInst, id, scale);
 }
+// 显式释放所有 GIF 帧，避免析构时 GDI+ 已销毁
+void PetWindow::DestroyAllGifs()
+{
+    moveRight.ClearFrames();
+    moveLeft.ClearFrames();
+    dragGif.ClearFrames();
+    for (auto& g : idle) g.ClearFrames();
+}
 // 显示窗口并启动定时器
 void PetWindow::Show()
 {
@@ -109,6 +119,13 @@ LRESULT PetWindow::HandleMessage(UINT msg, WPARAM w, LPARAM l)
 {
     switch (msg)
     {
+    case WM_CREATE:
+       {
+           HICON hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_APPICON));
+           SendMessage(Hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+           SendMessage(Hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+           return 0;
+       }
     case WM_TRAYICON:
         if (l == WM_RBUTTONUP)
             tray.ShowMenu();
@@ -146,7 +163,9 @@ LRESULT PetWindow::HandleMessage(UINT msg, WPARAM w, LPARAM l)
         SaveLocation();
         KillTimer(Hwnd, 1);
         KillTimer(Hwnd, 2);
+        DestroyAllGifs();
         Gdiplus::GdiplusShutdown(gdiplusToken);
+        CloseHandle(hMutex);
         PostQuitMessage(0);
         return 0;
     }
@@ -407,7 +426,7 @@ void PetWindow::SetAutoStartup(bool enable)
 {
     HKEY key;
     RegOpenKeyW(HKEY_CURRENT_USER,
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+        LR"(Software\Microsoft\Windows\CurrentVersion\Run)",
         &key);
 
     if (enable)
@@ -434,4 +453,15 @@ void PetWindow::SaveLocation()
     cfg.windowX = rc.left;
     cfg.windowY = rc.top;
     Config::Save(cfg);
+}
+//设置原子锁
+void PetWindow::CheckSingleInstance()
+{
+    hMutex = CreateMutex(NULL, FALSE, L"aemeath");
+    if (GetLastError() == ERROR_ALREADY_EXISTS)
+    {
+        MessageBox(NULL, L"程序已经在运行中！", L"提示", MB_ICONINFORMATION);
+        CloseHandle(hMutex);
+        exit(0);
+    }
 }
