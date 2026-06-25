@@ -1,5 +1,6 @@
 ﻿#include <windows.h>
 #include <gdiplus.h>
+#include <shobjidl.h>
 #include "GifPlayer.h"
 #include "MotionSystem.h"
 #include "Config.h"
@@ -40,6 +41,8 @@ private:
     void DestroyAllGifs();
     // 键盘钩子
     static LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
+    // 任务栏
+    void ShowInTaskbar(HWND hWnd, bool bShow);
 private:
     // 基础
     HINSTANCE hInst;

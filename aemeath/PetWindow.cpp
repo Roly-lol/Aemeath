@@ -13,12 +13,13 @@ AppConfig g_config;
 int g_scaleIndex = 3;
 int g_transparencyIndex = 0;
 int g_petIdleIndex = 4;
-
 // 初始化 GDI+、加载配置、注册窗口类、创建窗口和加载 GIF
 PetWindow::PetWindow(HINSTANCE hInst) : hInst(hInst), tray()
 {
     //设置原子锁
     CheckSingleInstance();
+    // 初始化 COM
+    CoInitialize(NULL);
     // GDI+
     Gdiplus::GdiplusStartupInput gsi;
     GdiplusStartup(&gdiplusToken, &gsi, nullptr);
@@ -65,6 +66,8 @@ PetWindow::PetWindow(HINSTANCE hInst) : hInst(hInst), tray()
 
     // 键盘事件
     hHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, GetModuleHandle(NULL), 0);
+    // 任务栏隐藏图标
+    ShowInTaskbar(Hwnd, false);
 
     tray.Init(hInst, Hwnd);
     if (cfg.defaultState) TogglePause();
@@ -179,6 +182,7 @@ LRESULT PetWindow::HandleMessage(UINT msg, WPARAM w, LPARAM l)
         Gdiplus::GdiplusShutdown(gdiplusToken);
         CloseHandle(hMutex);
         UnhookWindowsHookEx(hHook);
+        CoUninitialize();
         PostQuitMessage(0);
         return 0;
     }
@@ -221,7 +225,7 @@ void PetWindow::HandleCommand(int id)
     // 透明度
     if (id >= 2100 && id <= 2107) { SetTransparency(id - 2100); return; }
 
-    // 静止动画
+    // 闲置动画
     if (id >= 2400 && id <= 2404)
     {
         g_petIdleIndex = id - 2400;
@@ -235,54 +239,54 @@ void PetWindow::HandleCommand(int id)
         return;
     }
 
-    // 跟随
-    if (id == 2200)
+    switch (id)
     {
-        cfg.followMouse = !cfg.followMouse;
-        g_config = cfg;
-        Config::Save(cfg);
-        return;
-    }
-
-    // 穿透
-    if (id == 2201)
-    {
-        cfg.clickThrough = !cfg.clickThrough;
-        g_config = cfg;
-        Config::Save(cfg);
-        ApplyClickThrough();
-        return;
-    }
-    //默认
-    if (id == 2202)
-    {
-        cfg.defaultState = !cfg.defaultState;
-        g_config = cfg;
-        Config::Save(cfg);
-        return;
-    }
-    // 自启
-    if (id == 2203)
-    {
-        cfg.autoStartup = !cfg.autoStartup;
-        g_config = cfg;
-        Config::Save(cfg);
-        SetAutoStartup(cfg.autoStartup);
-        return;
-    }
-
-    // 暂停
-    if (id == 2300)
-    {
-        TogglePause();
-        return;
-    }
-
-    // 退出
-    if (id == 2301)
-    {
-        DestroyWindow(Hwnd);
-        return;
+        // 跟随
+        case 2200:
+        {
+            cfg.followMouse = !cfg.followMouse;
+            g_config = cfg;
+            Config::Save(cfg);
+            return;
+        }
+        // 穿透
+        case 2201:
+        {
+            cfg.clickThrough = !cfg.clickThrough;
+            g_config = cfg;
+            Config::Save(cfg);
+            ApplyClickThrough();
+            return;
+        }
+        // 默认
+        case 2202:
+        {
+            cfg.defaultState = !cfg.defaultState;
+            g_config = cfg;
+            Config::Save(cfg);
+            return;
+        }
+        // 自启
+        case 2203:
+        {
+            cfg.autoStartup = !cfg.autoStartup;
+            g_config = cfg;
+            Config::Save(cfg);
+            SetAutoStartup(cfg.autoStartup);
+            return;
+        }
+        // 暂停
+        case 2300:
+        {
+            TogglePause();
+            return;
+        }
+        // 退出
+        case 2301:
+        {
+            DestroyWindow(Hwnd);
+            return;
+        }
     }
 }
 // 处理定时器消息，分别更新动画帧和运动系统
@@ -533,5 +537,25 @@ void PetWindow::CheckSingleInstance()
         MessageBox(NULL, L"程序已经在运行中！", L"提示", MB_ICONINFORMATION);
         CloseHandle(hMutex);
         exit(0);
+    }
+}
+// 是否显示任务栏图标函数
+void PetWindow::ShowInTaskbar(HWND hWnd, bool bShow)
+{
+    ITaskbarList* pTaskbarList;
+    HRESULT hr = CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER,
+        IID_ITaskbarList, (void**)&pTaskbarList);
+    if (SUCCEEDED(hr))
+    {
+        pTaskbarList->HrInit();
+        if (bShow)
+            pTaskbarList->AddTab(hWnd);
+        else
+            pTaskbarList->DeleteTab(hWnd);
+        pTaskbarList->Release();
+    }
+    else
+    {
+        MessageBox(Hwnd, L"错误", L"COM加载失败", MB_ICONERROR);
     }
 }
