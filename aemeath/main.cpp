@@ -1,6 +1,11 @@
 ﻿#include <windows.h>
 #include "PetWindow.h"
+
+#ifdef _DEBUG
 #include "Logger.h"
+#include <shlobj_core.h>
+#endif
+
 void AttachConsole()
 {
     AllocConsole() && ::AttachConsole(GetCurrentProcessId());
@@ -16,6 +21,14 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 #ifdef _DEBUG
     AttachConsole();
     Logger::SetLevel(Logger::Level::Debug, Logger::LoggerType::ConsoleLogger);
+    if (IsUserAnAdmin())
+    {
+        LOG_INFO("具有管理员权限");
+    }
+    else
+    {
+        LOG_INFO("不具有管理员权限");
+    }
 #endif
 	// 创建并显示宠物窗口
     PetWindow app(hInstance);

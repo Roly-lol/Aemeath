@@ -4,10 +4,6 @@
 #include <windowsx.h>
 #include "resource.h"
 #pragma comment(lib, "gdiplus.lib")
-
-// 静态变量初始化
-HWND PetWindow::Hwnd = nullptr;
-HHOOK PetWindow::hHook = NULL;
 // 全局状态（给托盘菜单用）
 AppConfig g_config;
 int g_scaleIndex = 3;
@@ -31,14 +27,6 @@ PetWindow::PetWindow(HINSTANCE hInst) : hInst(hInst), tray()
     g_transparencyIndex = cfg.transparencyIndex;
     g_petIdleIndex = cfg.petIdleIndex;
 
-    //防止配置里存了越界值
-    if (cfg.scaleIndex < 0 || cfg.scaleIndex > 8)
-        cfg.scaleIndex = g_scaleIndex = 3;   // 默认中间值
-    if (cfg.transparencyIndex < 0 || cfg.transparencyIndex > 7)
-        cfg.transparencyIndex = g_transparencyIndex = 0; // 默认不透明
-    if (cfg.petIdleIndex < 0 || cfg.petIdleIndex > 4)
-        cfg.petIdleIndex = 4; // 默认随机动画
-
     //窗口注册
     WNDCLASS wc = {};
     wc.lpfnWndProc = WndProc;
@@ -47,7 +35,7 @@ PetWindow::PetWindow(HINSTANCE hInst) : hInst(hInst), tray()
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     RegisterClass(&wc);
     //窗口创建
-    Hwnd = CreateWindowEx(WS_EX_LAYERED | WS_EX_TOPMOST,wc.lpszClassName, L"",WS_POPUP, cfg.windowX, cfg.windowY, 200, 200, nullptr, nullptr, hInst, this);
+    Hwnd = CreateWindowEx(WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,wc.lpszClassName, L"",WS_POPUP, cfg.windowX, cfg.windowY, 200, 200, nullptr, nullptr, hInst, this);
     // 加载 GIF（从资源）
     LoadAllGifs();
 
@@ -64,10 +52,9 @@ PetWindow::PetWindow(HINSTANCE hInst) : hInst(hInst), tray()
 	// 应用配置的透明度设置
     SetTransparency(cfg.transparencyIndex);
 
-    // 键盘事件
-    hHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, GetModuleHandle(NULL), 0);
-    // 任务栏隐藏图标
-    ShowInTaskbar(Hwnd, false);
+    // 注册全局热键
+    RegisterHotKey(Hwnd, HOTKEY_F6, 0, VK_F6);
+    RegisterHotKey(Hwnd, HOTKEY_F7, 0, VK_F7);
 
     tray.Init(hInst, Hwnd);
     if (cfg.defaultState) TogglePause();
@@ -134,87 +121,70 @@ LRESULT PetWindow::HandleMessage(UINT msg, WPARAM w, LPARAM l)
 {
     switch (msg)
     {
-    case WM_CREATE:
-       {
-           HICON hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_APPICON));
-           SendMessage(Hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
-           SendMessage(Hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
-           return 0;
-       }
-    case WM_TRAYICON:
-        if (l == WM_RBUTTONUP)
-            tray.ShowMenu();
-        return 0;
-
-    case WM_TIMER:
-        OnTimer((UINT)w);   
-        return 0;
-
-    case WM_LBUTTONDOWN:
-        if (!cfg.clickThrough)
+        case WM_CREATE:
         {
-            POINT pt{ GET_X_LPARAM(l), GET_Y_LPARAM(l) };
-            StartDrag(pt);
+            HICON hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_APPICON));
+            SendMessage(Hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+            SendMessage(Hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+            return 0;
         }
-        return 0;
+        case WM_TRAYICON:
+            if (l == WM_RBUTTONUP)
+                tray.ShowMenu();
+            return 0;
 
-    case WM_MOUSEMOVE:
-        if (dragging)
-        {
-            POINT pt{ GET_X_LPARAM(l), GET_Y_LPARAM(l) };
-            //DoDrag(pt);
-        }
-        return 0;
+        case WM_TIMER:
+            OnTimer((UINT)w);
+            return 0;
 
-    case WM_LBUTTONUP:
-        StopDrag();
-        return 0;
-
-    case WM_COMMAND:
-        HandleCommand((int)w);
-        return 0;
-
-    case WM_DESTROY:
-        SaveLocation();
-        KillTimer(Hwnd, 1);
-        KillTimer(Hwnd, 2);
-        DestroyAllGifs();
-        Gdiplus::GdiplusShutdown(gdiplusToken);
-        CloseHandle(hMutex);
-        UnhookWindowsHookEx(hHook);
-        CoUninitialize();
-        PostQuitMessage(0);
-        return 0;
-    }
-
-    return DefWindowProc(Hwnd, msg, w, l);
-}
-// 静态键盘事件函数
-LRESULT CALLBACK PetWindow::KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
-{
-    if (nCode == HC_ACTION)
-    {
-        KBDLLHOOKSTRUCT* p = (KBDLLHOOKSTRUCT*)lParam;
-        if (wParam == WM_KEYDOWN)
-        {
-            switch (p->vkCode)
+        case WM_LBUTTONDOWN:
+            if (!cfg.clickThrough)
             {
-                case VK_F6:
-                {
-                    // 静止/飞行
+                POINT pt{ GET_X_LPARAM(l), GET_Y_LPARAM(l) };
+                StartDrag(pt);
+            }
+            return 0;
+
+        case WM_MOUSEMOVE:
+            if (dragging)
+            {
+                POINT pt{ GET_X_LPARAM(l), GET_Y_LPARAM(l) };
+                //DoDrag(pt);
+            }
+            return 0;
+
+        case WM_LBUTTONUP:
+            StopDrag();
+            return 0;
+
+        case WM_COMMAND:
+            HandleCommand((int)w);
+            return 0;
+
+        case WM_DESTROY:
+            SaveLocation();
+            KillTimer(Hwnd, 1);
+            KillTimer(Hwnd, 2);
+            DestroyAllGifs();
+            Gdiplus::GdiplusShutdown(gdiplusToken);
+            CloseHandle(hMutex);
+            PostQuitMessage(0);
+            return 0;
+
+        case WM_HOTKEY:
+        {
+            switch (w)
+            {
+                case HOTKEY_F6:
                     PostMessage(Hwnd, WM_COMMAND, 2300, 0);
-                    break;
-                }
-                case VK_F7:
-                {
-                    // 跟随鼠标
+                    return 0;
+                case HOTKEY_F7:
                     PostMessage(Hwnd, WM_COMMAND, 2200, 0);
-                    break;
-                }
+                    return 0;
             }
         }
     }
-    return CallNextHookEx(hHook, nCode, wParam, lParam);
+    return DefWindowProc(Hwnd, msg, w, l);
 }
 // 处理托盘菜单命令，根据 ID 执行对应操作
 void PetWindow::HandleCommand(int id)
@@ -518,7 +488,7 @@ void PetWindow::SetAutoStartup(bool enable)
 
     RegCloseKey(key);
 }
-//保存当前窗口位置到配置文件，以便下次启动时恢复位置
+// 保存当前窗口位置到配置文件，以便下次启动时恢复位置
 void PetWindow::SaveLocation()
 {
     // 1. 获取窗口位置
@@ -528,7 +498,7 @@ void PetWindow::SaveLocation()
     cfg.windowY = rc.top;
     Config::Save(cfg);
 }
-//设置原子锁
+// 设置原子锁
 void PetWindow::CheckSingleInstance()
 {
     hMutex = CreateMutex(NULL, FALSE, L"aemeath");
@@ -537,25 +507,5 @@ void PetWindow::CheckSingleInstance()
         MessageBox(NULL, L"程序已经在运行中！", L"提示", MB_ICONINFORMATION);
         CloseHandle(hMutex);
         exit(0);
-    }
-}
-// 是否显示任务栏图标函数
-void PetWindow::ShowInTaskbar(HWND hWnd, bool bShow)
-{
-    ITaskbarList* pTaskbarList;
-    HRESULT hr = CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER,
-        IID_ITaskbarList, (void**)&pTaskbarList);
-    if (SUCCEEDED(hr))
-    {
-        pTaskbarList->HrInit();
-        if (bShow)
-            pTaskbarList->AddTab(hWnd);
-        else
-            pTaskbarList->DeleteTab(hWnd);
-        pTaskbarList->Release();
-    }
-    else
-    {
-        MessageBox(Hwnd, L"错误", L"COM加载失败", MB_ICONERROR);
     }
 }

@@ -36,12 +36,14 @@ AppConfig Config::Load()
     cfg.clickThrough = j.value("click_through", cfg.clickThrough);
     cfg.followMouse = j.value("follow_mouse", cfg.followMouse);
     cfg.defaultState = j.value("defaultState", cfg.defaultState);
+
+    //防止配置里存了越界值
     if (cfg.scaleIndex < 0 || cfg.scaleIndex > 8)
-        cfg.scaleIndex = 3;
+        cfg.scaleIndex = 3;   // 默认中间值
     if (cfg.transparencyIndex < 0 || cfg.transparencyIndex > 7)
-        cfg.transparencyIndex = 0;
+        cfg.transparencyIndex = 0; // 默认不透明
     if (cfg.petIdleIndex < 0 || cfg.petIdleIndex > 4)
-        cfg.petIdleIndex = 4;
+        cfg.petIdleIndex = 4; // 默认随机动画
 #ifdef _DEBUG
         std::stringstream ss;
         ss << "\n[Config::Load] Loaded config:\n"

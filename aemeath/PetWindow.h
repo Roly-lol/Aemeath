@@ -39,14 +39,10 @@ private:
     void CheckSingleInstance();
     // 释放所有 GDI+ 对象
     void DestroyAllGifs();
-    // 键盘钩子
-    static LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
-    // 任务栏
-    void ShowInTaskbar(HWND hWnd, bool bShow);
 private:
     // 基础
     HINSTANCE hInst;
-    static HWND Hwnd;
+    HWND Hwnd;
     ULONG_PTR gdiplusToken;
 
     // 配置
@@ -69,13 +65,12 @@ private:
     POINT dragOffset{0,0};
     bool isPaused = false;
 
-
     // 托盘
     TrayIcon tray;
 
     // 原子锁
     HANDLE hMutex;
-
-    // 键盘钩子
-    static HHOOK hHook;
+    // 系统热键
+    static constexpr int HOTKEY_F6 = 1001;
+    static constexpr int HOTKEY_F7 = 1002;
 };
