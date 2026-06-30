@@ -14,8 +14,7 @@ PetWindow::PetWindow(HINSTANCE hInst) : hInst(hInst), tray()
 {
     //设置原子锁
     CheckSingleInstance();
-    // 初始化 COM
-    CoInitialize(NULL);
+	
     // GDI+
     Gdiplus::GdiplusStartupInput gsi;
     GdiplusStartup(&gdiplusToken, &gsi, nullptr);
